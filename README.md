@@ -39,6 +39,15 @@ Invoke-Command -ComputerName <DCName> -ScriptBlock {
 # 並啟用：Audit: Force audit policy subcategory settings to override audit policy category settings
 ```
 
+快速檢查與最小設定（僅成功）：
+```powershell
+# 檢查目前設定（應顯示 Success 或 Success and Failure）
+auditpol /get /subcategory:"Directory Service Changes"
+
+# 若不是 Success，開啟成功稽核
+auditpol /set /subcategory:"Directory Service Changes" /success:enable
+```
+
 ### B. 在 ADUC 設定 SACL（圖形介面，避免語法誤判）
 1. 開啟 Active Directory Users and Computers，勾選 View → Advanced Features
 2. 找到 `CN=Computers`（或承載目標帳號的 OU）
