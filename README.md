@@ -3,6 +3,23 @@
 ## 概述
 本指南提供完整、可重現的 Shadow Credentials EDR 驗證流程，讓第一次接觸的人也能按步驟完成測試。專注於驗證 EDR 對 Shadow Credentials 攻擊鏈的偵測能力，而非攻擊成功與否。
 
+## ❓ 快速理解：什麼是 Shadow Credentials？
+Shadow Credentials 是一種 AD 持久化/冒用技術：
+- 攻擊者不是先偷密碼，而是把自己的公鑰憑證寫進目標帳號的 `msDS-KeyCredentialLink`
+- 後續再用對應私鑰走 PKINIT，向 KDC 證明自己是該帳號
+- 核心是「寫入 KeyCredential」，不是「一定要成功拿到 TGT」
+
+### 為什麼這條命令本身就算執行了 Shadow Credentials？
+```powershell
+& "C:\Tools\Whisker\Whisker.exe" add /target:TARGET-COMPUTER$ /path:C:\Windows\Temp\shadow.pfx /password:"ComplexP@ssw0rd123!"
+```
+因為它完成了 Shadow Credentials 的植入階段：
+- `/target:TARGET-COMPUTER$`：指定要被植入的 AD 物件（電腦帳號）
+- `add`：產生 KeyCredential 並寫入 `msDS-KeyCredentialLink`
+- `/path` + `/password`：輸出對應的 PFX（含私鑰），供後續 PKINIT 使用
+
+一句話：`Whisker add` 是植入，`Rubeus asktgt /certificate ...` 是利用。
+
 ## 🎯 驗證目標
 驗證 EDR 是否能偵測以下關鍵攻擊行為：
 - ✅ AD 物件屬性修改 (`msDS-KeyCredentialLink`)
@@ -43,7 +60,7 @@ Get-ADUser -Identity "TARGET-USER" | Select Name, DistinguishedName
 # 3. 對電腦帳號執行 Shadow Credentials
 & "C:\Tools\Whisker\Whisker.exe" add /target:TARGET-COMPUTER$ /path:C:\Windows\Temp\shadow.pfx /password:"ComplexP@ssw0rd123!"
 
-# 4. 對使用者帳號執行 Shadow Credentials  
+# 4. 對使用者帳號執行 Shadow Credentials
 & "C:\Tools\Whisker\Whisker.exe" add /target:TARGET-USER /path:C:\Windows\Temp\shadow_user.pfx /password:"ComplexP@ssw0rd123!"
 
 # 5. 發起 PKINIT 認證嘗試 (即使預期被拒絕)
@@ -88,7 +105,7 @@ Get-ADUser -Identity "TARGET-USER" -Properties msDS-KeyCredentialLink | Select -
 
 ### 必須偵測的項目
 - **AD 物件修改偵測**：EDR 對 `msDS-KeyCredentialLink` 寫入產生告警
-- **工具執行偵測**：EDR 對 Whisker/Rubeus 執行產生告警  
+- **工具執行偵測**：EDR 對 Whisker/Rubeus 執行產生告警
 - **檔案操作偵測**：EDR 對憑證檔案操作產生告警
 - **網路活動偵測**：EDR 對 Kerberos 憑證預驗證嘗試產生告警
 
@@ -138,7 +155,7 @@ EDR 偵測的是「攻擊行為」而非「攻擊結果」。寫入 `msDS-KeyCre
 ### 成功偵測範例
 ```
 [EDR ALERT] Suspicious AD Object Modification
-- Target: CN=TARGET-COMPUTER,CN=Computers,DC=domain,DC=local  
+- Target: CN=TARGET-COMPUTER,CN=Computers,DC=domain,DC=local
 - Attribute: msDS-KeyCredentialLink
 - Tool: Whisker.exe
 - Severity: High
@@ -178,7 +195,7 @@ EDR 偵測的是「攻擊行為」而非「攻擊結果」。寫入 `msDS-KeyCre
 
 ## 測試結果
 - AD物件修改偵測: ✅/❌
-- 工具執行偵測: ✅/❌  
+- 工具執行偵測: ✅/❌
 - 檔案操作偵測: ✅/❌
 - 網路活動偵測: ✅/❌
 
@@ -191,7 +208,7 @@ EDR 偵測的是「攻擊行為」而非「攻擊結果」。寫入 `msDS-KeyCre
 
 ## 🔗 相關資源
 
-- [Microsoft Docs: msDS-KeyCredentialLink](https://docs.microsoft.com/en-us/windows/win32/adschema/a-msds-keycredentiallink)
+- [Microsoft Docs: msDS-KeyCredentialLink](https://learn.microsoft.com/windows/win32/adschema/a-msds-keycredentiallink)
 - [MITRE ATT&CK: T1556.003](https://attack.mitre.org/techniques/T1556/003/)
 - [Shadow Credentials 技術說明](https://www.specterops.io/assets/resources/Certified_Pre-Owned.pdf)
 
