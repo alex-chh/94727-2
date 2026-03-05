@@ -20,6 +20,50 @@ Shadow Credentials 是一種 AD 持久化/冒用技術：
 
 一句話：`Whisker add` 是植入，`Rubeus asktgt /certificate ...` 是利用。
 
+## 前置設定：讓 5136 正確產生
+
+目標：在 DC 的 Security log 確實記錄 `msDS-KeyCredentialLink` 變更（Event ID 5136）。
+關鍵原則：Advanced Audit 只是開事件來源；真正記錄哪些變更，要靠 SACL（Auditing）定義範圍。
+
+### A. 在 DC 啟用 Directory Service Changes
+```powershell
+# 在目標 DC 上啟用並更新原則
+Invoke-Command -ComputerName <DCName> -ScriptBlock {
+  auditpol /set /subcategory:"Directory Service Changes" /success:enable /failure:enable
+  gpupdate /force
+}
+
+# 如採用 GPO，建議在 Default Domain Controllers Policy：
+# Computer Configuration → Windows Settings → Security Settings → Advanced Audit Policy Configuration
+# DS Access → Directory Service Changes：Success / Failure
+# 並啟用：Audit: Force audit policy subcategory settings to override audit policy category settings
+```
+
+### B. 在 ADUC 設定 SACL（圖形介面，避免語法誤判）
+1. 開啟 Active Directory Users and Computers，勾選 View → Advanced Features
+2. 找到 `CN=Computers`（或承載目標帳號的 OU）
+3. 右鍵 Properties → Security → Advanced → Auditing → Add
+4. Principal：Everyone（或 Authenticated Users）
+5. Type：Success（可加 Failure）
+6. Applies to：This object and all descendant objects
+7. Permissions：勾選「Write all properties」（或等效的 Write 欄位）
+8. 套用後在 DC 執行 `gpupdate /force`
+
+### C. 驗證 5136（使用 XML 欄位，避免語系訊息差異）
+```powershell
+$dc = "<DCName>"
+$ev = Get-WinEvent -ComputerName $dc -FilterHashtable @{ LogName='Security'; Id=5136; StartTime=(Get-Date).AddHours(-2) }
+foreach ($e in $ev) {
+  $xml = [xml]$e.ToXml()
+  $data = $xml.Event.EventData.Data
+  $dn   = ($data | Where-Object {$_.Name -eq 'ObjectDN'}).'#text'
+  $attr = ($data | Where-Object {$_.Name -eq 'AttributeLDAPDisplayName'}).'#text'
+  if ($dn -like '*CN=TARGET-COMPUTER,CN=Computers,DC=domain,DC=local*' -and $attr -eq 'msDS-KeyCredentialLink') {
+    [pscustomobject]@{ Time=$e.TimeCreated; DN=$dn; Attr=$attr }
+  }
+}
+```
+
 ## 🎯 驗證目標
 驗證 EDR 是否能偵測以下關鍵攻擊行為：
 - ✅ AD 物件屬性修改 (`msDS-KeyCredentialLink`)
