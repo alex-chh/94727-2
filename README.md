@@ -10,6 +10,11 @@ Shadow Credentials (msDS-KeyCredentialLink) allow an attacker to authenticate as
 
 This attack vector is **silent** (no password change), **persistent** (certificates have long validity), and **effective**.
 
+## Quick Start
+- New to this topic? Follow the step-by-step guide: [step by step.md](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/step%20by%20step.md)
+- Full validation procedure: [EDR_VALIDATION_PROCEDURE - 複製.md](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/EDR_VALIDATION_PROCEDURE%20-%20複製.md)
+- Run the DC-side validator: [Validate-ShadowCredentialsEDR.ps1](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/Validate-ShadowCredentialsEDR.ps1)
+
 ## Verification Scope
 We focus on the critical path. If you can't detect the modification of the directory service or the subsequent anomalous authentication, your EDR is decoration, not protection.
 
