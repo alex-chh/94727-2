@@ -15,6 +15,22 @@ This attack vector is **silent** (no password change), **persistent** (certifica
 - Full validation procedure: [EDR_VALIDATION_PROCEDURE - 複製.md](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/EDR_VALIDATION_PROCEDURE%20-%20複製.md)
 - Run the DC-side validator: [Validate-ShadowCredentialsEDR.ps1](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/Validate-ShadowCredentialsEDR.ps1)
 
+## 文件導讀：兩份文件的差別
+- step by step.md
+  - 目的：操作型跑法，讓使用者「照做就通」。提供兩條攻擊場景：Windows 與 Linux。
+  - 內容：最短路徑命令、變數設定、攻擊鏈 1→6、事件驗證腳本基本用法、清理與歸檔。
+  - 對象：執行者與新手，追求可複製與低思考成本。
+  - 入口：[step by step.md](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/step%20by%20step.md)
+- EDR_VALIDATION_PROCEDURE - 複製.md
+  - 目的：驗證型 SOP，定義何為「有效偵測」，含 Pre-Flight、期望事件、故障排除。
+  - 內容：KDC/PKINIT 前置檢查、最小噪音 SACL（僅審 msDS-KeyCredentialLink）、XML 事件解析與欄位 fallback、成功準則、Checklist。
+  - 對象：分析者與審核者，追求準確性與覆蓋率的可證實依據。
+  - 入口：[EDR_VALIDATION_PROCEDURE - 複製.md](file:///c:/Users/aduser/Desktop/PCT/94727-2/94727-2/EDR_VALIDATION_PROCEDURE%20-%20複製.md)
+
+## 建議使用方式
+- 初次或要快速演示：先跑 step by step（選擇 Windows 或 Linux），最後執行 Validate-ShadowCredentialsEDR.ps1。
+- 檢查覆蓋率或排錯：按 EDR_VALIDATION_PROCEDURE 的 Pre-Flight 修好 KDC/審計/SACL，再逐步對齊每個事件的期望值與排錯步驟。
+
 ## Verification Scope
 We focus on the critical path. If you can't detect the modification of the directory service or the subsequent anomalous authentication, your EDR is decoration, not protection.
 
